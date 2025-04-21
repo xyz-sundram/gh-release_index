@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <meta charset="UTF-8">
+  <title>Downloads</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    a { text-decoration: none; color: #007bff; }
+    a:hover { text-decoration: underline; }
+    ul { list-style-type: none; padding-left: 0; }
+    li { padding: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Downloads</h1>
+  <p id="path"></p>
+  <ul id="listing"></ul>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const currentDir = params.get('dir') || '/';
+
+    document.getElementById('path').innerText = `Path: ${currentDir}`;
+
+    function formatSize(bytes) {
+        const units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+        bytes /= 1024;
+        i++;
+        }
+        return `${bytes.toFixed(2)} ${units[i]}`;
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+
+    fetch('releases.json')
+      .then(res => res.json())
+      .then(data => {
+        const folders = new Set();
+        const files = [];
+
+        data.forEach(item => {
+          if (item.dir === currentDir) {
+            files.push(item);
+          } else if (item.dir.startsWith(currentDir) && item.dir !== currentDir) {
+            const subPath = item.dir.slice(currentDir.length);
+            const nextFolder = subPath.split('/')[0];
+            if (nextFolder) {
+              folders.add(`${currentDir.replace(/\/$/, '')}/${nextFolder}`);
+            }
+          }
+        });
+
+        const list = document.getElementById('listing');
+        [...folders].sort().forEach(folder => {
+          const li = document.createElement('li');
+          li.innerHTML = `📁 <a href="?dir=${encodeURIComponent(folder)}">${folder.split('/').pop()}/</a>`;
+          list.appendChild(li);
+        });
+
+        files.forEach(file => {
+          const li = document.createElement('li');
+          li.innerHTML = `📄 <a href="${file.url}">${file.name}</a> (${formatSize(file.size)}) [MD5: ${file.md5}] - Date: ${formatDate(file.date)}`;
+          list.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>
